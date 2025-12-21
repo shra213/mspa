@@ -15,10 +15,6 @@ export default function StudentTabs() {
                 name="Profile"
                 options={{ title: "Profile" }}
             />
-            <Tabs.Screen
-                name="Name"
-                options={{ title: "Name" }}
-            />
         </Tabs>
     );
 }
