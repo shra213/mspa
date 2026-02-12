@@ -1,8 +1,8 @@
-import { MaterialIcons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
+
 export default function StudentTabs() {
     return (
-
         <Tabs
             screenOptions={{
                 tabBarActiveTintColor: "#4f46e5", // active color
@@ -20,15 +20,6 @@ export default function StudentTabs() {
             }}
         >
             <Tabs.Screen
-                name="Test"
-                options={{
-                    title: "Test",
-                    tabBarIcon: ({ color, size }) => (
-                        <MaterialIcons name="assignment" size={size} color={color} />
-                    ),
-                }}
-            />
-            {/* <Tabs.Screen
                 name="Analytics"
                 options={{
                     title: "Analytics",
@@ -36,7 +27,7 @@ export default function StudentTabs() {
                         <Ionicons name="analytics" size={size} color={color} />
                     ),
                 }}
-            /> */}
+            />
             <Tabs.Screen
                 name="Profile"
                 options={{
@@ -47,6 +38,5 @@ export default function StudentTabs() {
                 }}
             />
         </Tabs>
-
     );
 }

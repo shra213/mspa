@@ -1,208 +1,248 @@
-import { backend } from "@/constants/theme";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { router } from "expo-router";
-import { useState } from "react";
+import api from "@/api";
+import {
+    ArrowLeft,
+    BookOpen,
+    LayoutGrid
+} from "lucide-react-native";
+import { useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
-    Alert,
-    FlatList,
+    Animated,
+    Pressable,
+    ScrollView,
+    StatusBar,
     Text,
-    TouchableOpacity,
     View,
 } from "react-native";
-type Test = {
-    _id: string;
-    title: string;
-    description: string;
-    duration: number;
-    createdAt?: string;
-    createdBy: {
-        name: string;
-    };
-};
+import { SafeAreaView } from "react-native-safe-area-context";
+import Active from "../Active";
+import Myresult from "../Myresult";
 
-const DUMMY_TESTS: Test[] = [
-    {
-        _id: "t1",
-        title: "Math Test",
-        description: "Basic arithmetic questions for 10th grade",
-        duration: 30,
-        createdAt: "2025-12-20T10:00:00Z",
-        createdBy: { name: "Shraddha" },
-    },
-    {
-        _id: "t2",
-        title: "DSA Test",
-        description: "Arrays, Strings and Linked List questions",
-        duration: 45,
-        createdAt: "2025-12-19T12:30:00Z",
-        createdBy: { name: "Ayush" },
-    },
-    {
-        _id: "t3",
-        title: "Aptitude Test",
-        description: "Logical reasoning and aptitude problems",
-        duration: 25,
-        createdAt: "2025-12-18T09:15:00Z",
-        createdBy: { name: "Nirmitee" },
-    },
-    {
-        _id: "t4",
-        title: "React JS Test",
-        description: "React concepts, hooks, and state management",
-        duration: 40,
-        createdAt: "2025-12-17T14:00:00Z",
-        createdBy: { name: "Shraddha" },
-    },
-];
+export default function StudentTests() {
+    const [subjects, setSubjects] = useState<any[]>([]);
+    const [selectedSubject, setSelectedSubject] = useState<any>(null);
+    const [activeTab, setActiveTab] = useState<"tests" | "results">("tests");
+    const [loading, setLoading] = useState(true);
 
-export default function Tests() {
-    const [tests, setTests] = useState<Test[]>(DUMMY_TESTS);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const slideAnim = useRef(new Animated.Value(20)).current;
 
-    // For real backend, uncomment this
-    /*
+    /* ================= FETCH SUBJECTS ================= */
     useEffect(() => {
-      const fetchTests = async () => {
-        try {
-          const token = await AsyncStorage.getItem("token");
-  
-          if (!token) {
-            router.replace("/student/student");
-            return;
-          }
-  
-          const res = await fetch(`${backend}/api/tests/active`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          });
-  
-          if (!res.ok) throw new Error("Failed to fetch tests");
-  
-          const data = await res.json();
-          setTests(data);
-        } catch (err) {
-          setError("Unable to load tests");
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchTests();
-    }, []);
-    */
-    const handleStartTest = async (testId: string) => {
-        setLoading(true);
-        try {
-            const token = await AsyncStorage.getItem("token");
-            if (!token) return router.replace("/student/student");
-
-            const res = await fetch(`${backend}/api/tests/${testId}/open`, {
-                method: "POST",
-                headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-            });
-
-            if (!res.ok) {
-                const err = await res.json();
-                Alert.alert("Error", err.message);
-                return;
+        const fetchSubjects = async () => {
+            try {
+                const res = await api.get("/user/enrollments");
+                setSubjects(res?.data?.enrolled || []);
+            } catch (e) {
+                console.log("Subject fetch error", e);
+            } finally {
+                setLoading(false);
             }
+        };
+        fetchSubjects();
+    }, []);
 
-            const data = await res.json();
+    /* ================= ANIMATION ================= */
+    useEffect(() => {
+        fadeAnim.setValue(0);
+        slideAnim.setValue(20);
+        Animated.parallel([
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 400,
+                useNativeDriver: true,
+            }),
+            Animated.timing(slideAnim, {
+                toValue: 0,
+                duration: 400,
+                useNativeDriver: true,
+            }),
+        ]).start();
+    }, [selectedSubject, activeTab]);
 
-            // Navigate to test screen with questions & startTime
-            router.push({
-                pathname: "/student/selectedTest",
-                params: {
-                    testId,
-                    startTime: data.startTime,
-                    duration: data.duration,
-                    questions: JSON.stringify(data.test.questions),
-                },
-            });
-        } catch (err) {
-            Alert.alert("Error", "Something went wrong");
-        } finally {
-            setLoading(false);
-        }
-    };
-
+    /* ================= LOADER ================= */
     if (loading) {
         return (
-            <View className="flex-1 items-center justify-center bg-gray-100">
-                <ActivityIndicator size="large" color="#2563EB" />
-            </View>
-        );
-    }
-
-    if (error) {
-        return (
-            <View className="flex-1 items-center justify-center bg-gray-100">
-                <Text className="text-red-500 mb-3">{error}</Text>
-                <TouchableOpacity
-                    className="px-4 py-2 bg-blue-500 rounded"
-                    onPress={() => router.replace("/")}
-                >
-                    <Text className="text-white font-semibold">Go Back</Text>
-                </TouchableOpacity>
-            </View>
-        );
-    }
-
-    return (
-        <View className="flex-1 p-4 bg-gray-100">
-            <Text className="text-2xl font-bold mb-4 text-gray-800">
-                Available Tests
-            </Text>
-
-            {tests.length === 0 ? (
-                <Text className="text-gray-500 text-center mt-10">
-                    No tests available
+            <View className="flex-1 bg-[#F5F7FA] items-center justify-center">
+                <ActivityIndicator size="large" color="#1E3A8A" />
+                <Text className="text-slate-400 mt-3 font-semibold">
+                    Loading subjects...
                 </Text>
-            ) : (
-                <FlatList
-                    data={tests}
-                    keyExtractor={(item) => item._id}
-                    renderItem={({ item }) => (
-                        <TouchableOpacity
-                            className="bg-white p-5 mb-4 rounded-xl shadow-md"
-                            onPress={() =>
-                                router.push({
-                                    pathname: "/student/selectedTest",
-                                    params: { testId: item._id },
-                                })
-                            }
-                        >
-                            <Text className="text-lg font-bold text-gray-900">
-                                {item.title}
+            </View>
+        );
+    }
+
+    /* ================= SUBJECT LIST ================= */
+    if (!selectedSubject) {
+        return (
+            <SafeAreaView edges={["top"]} className="flex-1 bg-[#1E3A8A]">
+                <View className="flex-1 bg-[#F5F7FA]">
+                    <StatusBar barStyle="light-content" backgroundColor="#1E3A8A" />
+
+                    {/* HEADER */}
+                    <View className="bg-[#1E3A8A] px-8 pt-10 pb-20 rounded-bl-[70px]">
+                        <View className="flex-row justify-between items-center">
+                            <View className="bg-white/10 p-3 rounded-2xl">
+                                <LayoutGrid size={22} color="white" />
+                            </View>
+
+                            {/* <View className="bg-emerald-400 px-4 py-1 rounded-full">
+                            <Text className="text-white text-[10px] font-black tracking-widest">
+                                LIVE
                             </Text>
-                            <Text className="text-gray-700 mt-1">{item.description}</Text>
-                            <View className="mt-2">
-                                <Text className="text-gray-500 text-sm">
-                                    Duration: {item.duration} mins
-                                </Text>
-                                <Text className="text-gray-400 text-sm">
-                                    Created:{" "}
-                                    {item.createdAt
-                                        ? new Date(item.createdAt).toLocaleString()
-                                        : "-"}
+                        </View> */}
+                        </View>
+
+                        <Text className="text-white/60 mt-10 text-xs font-bold tracking-widest uppercase">
+                            Enrolled Subjects
+                        </Text>
+                        <Text className="text-white text-4xl font-black mt-1">
+                            My Subjects
+                        </Text>
+                    </View>
+
+                    {/* SUBJECT CARDS */}
+                    <ScrollView
+                        className="flex-1 -mt-12 py-3 px-6"
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={{ paddingBottom: 40 }}
+                    >
+                        {subjects.length === 0 ? (
+                            <View className="items-center mt-20">
+                                <BookOpen size={50} color="#CBD5E1" />
+                                <Text className="text-slate-400 font-bold mt-4">
+                                    No subjects enrolled
                                 </Text>
                             </View>
-                            <Text className="text-gray-400 text-sm mt-1">
-                                By: {item.createdBy.name}
-                            </Text>
-                            <TouchableOpacity
-                                className="mt-3 bg-blue-500 py-2 rounded"
-                                onPress={() => handleStartTest(item._id)}
+                        ) : (
+                            <Animated.View
+                                style={{
+                                    opacity: fadeAnim,
+                                    transform: [{ translateY: slideAnim }],
+                                }}
+                                className="flex-row flex-wrap justify-between"
                             >
-                                <Text className="text-white font-semibold text-center">Start Test</Text>
-                            </TouchableOpacity>
-                        </TouchableOpacity>
+                                {subjects.map((item) => (
+                                    <Pressable
+                                        key={item._id}
+                                        onPress={() => setSelectedSubject(item.subject)}
+                                        style={({ pressed }) => [
+                                            {
+                                                transform: [{ scale: pressed ? 0.97 : 1 }],
+                                            },
+                                        ]}
+                                        className="bg-white w-[48%] p-5 rounded-[30px] mb-4 shadow border border-slate-100"
+                                    >
+                                        <View className="bg-blue-100 w-12 h-12 rounded-2xl items-center justify-center mb-4">
+                                            <BookOpen size={22} color="#1E3A8A" />
+                                        </View>
+
+                                        <Text
+                                            className="text-slate-900 font-extrabold text-lg leading-tight"
+                                            numberOfLines={2}
+                                        >
+                                            {item.subject.name}
+                                        </Text>
+
+                                        <Text
+                                            className="text-slate-400 text-xs font-semibold mt-2"
+                                            numberOfLines={1}
+                                        >
+                                            {item.subject.teacher.name}
+                                        </Text>
+                                    </Pressable>
+                                ))}
+                            </Animated.View>
+                        )}
+                    </ScrollView>
+                </View>
+            </SafeAreaView>
+        );
+    }
+
+    /* ================= SUBJECT DETAIL ================= */
+    return (
+        <SafeAreaView edges={["top"]} className="flex-1 bg-[#1E3A8A]">
+
+            <View className="flex-1 bg-[#F5F7FA]">
+                {/* <StatusBar barStyle="light-content" /> */}
+                <StatusBar barStyle="light-content" backgroundColor="#1E3A8A" />
+                {/* HEADER */}
+                <View className="bg-[#1E3A8A] px-4 pb-8 rounded-b-[42px]">
+                    {/* TOP ROW */}
+                    <View className=" flex-row items-center justify-between mb-3">
+                        <Pressable
+                            onPress={() => setSelectedSubject(null)}
+                            className="bg-white/15 p-2.5 rounded-xl"
+                        >
+                            <ArrowLeft size={20} color="white" />
+                        </Pressable>
+
+                        {/* SUBJECT BADGE */}
+                        <View className="bg-white/15 px-3 py-1 rounded-full">
+                            <Text className="text-white/80 text-[10px] font-bold tracking-widest">
+                                SUBJECT
+                            </Text>
+                        </View>
+                    </View>
+
+                    {/* TITLE AREA */}
+                    <View className="items-center px-6">
+                        <Text
+                            className="text-white text-[26px] font-black text-center leading-tight"
+                            numberOfLines={2}
+                        >
+                            {selectedSubject.name}
+                        </Text>
+
+                        {/* SUB DIVIDER */}
+                        <View className="w-10 h-[2px] bg-white/30 rounded-full mt-2 mb-2" />
+
+                        <Text className="text-white/70 text-xs font-semibold tracking-wide">
+                            {selectedSubject.teacher.name}
+                        </Text>
+                    </View>
+                </View>
+
+
+                {/* TABS */}
+                <View className="flex-row px-10 mt-8">
+                    {["tests", "results"].map((tab) => (
+                        <Pressable
+                            key={tab}
+                            onPress={() => setActiveTab(tab as any)}
+                            className="mr-10"
+                        >
+                            <Text
+                                className={`text-lg font-black ${activeTab === tab
+                                    ? "text-slate-900"
+                                    : "text-slate-300"
+                                    }`}
+                            >
+                                {tab.toUpperCase()}
+                            </Text>
+                            {activeTab === tab && (
+                                <View className="h-1 w-6 bg-blue-600 rounded-full mt-1" />
+                            )}
+                        </Pressable>
+                    ))}
+                </View>
+
+                {/* CONTENT */}
+                <Animated.View
+                    style={{
+                        opacity: fadeAnim,
+                        transform: [{ translateY: slideAnim }],
+                    }}
+                    className="flex-1 px-8 mt-6"
+                >
+                    {activeTab === "tests" ? (
+                        <Active subjectId={selectedSubject._id} />
+                    ) : (
+                        <Myresult subjectId={selectedSubject._id} />
                     )}
-                />
-            )}
-        </View>
+                </Animated.View>
+            </View>
+        </SafeAreaView>
     );
 }
