@@ -5,6 +5,7 @@ import LottieView from "lottie-react-native";
 import { BookOpen, LogOut } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import {
+    Alert,
     Animated,
     Pressable,
     ScrollView,
@@ -12,18 +13,23 @@ import {
     TextInput,
     View,
 } from "react-native";
-
 /* ===================== */
 /* ==== TEACHER PROFILE ==== */
 /* ===================== */
-
+const selectFrom = [
+    'Physics', 'Chemistry', 'Mathematics', 'Biology',
+    'Computer Science', 'DBMS', 'Operating Systems',
+    'C', 'C++', 'Java', 'Python', 'JavaScript',
+    'React', 'Node.js', 'MongoDB',
+    'Economics', 'Management', 'English', 'DSA'
+];
 export default function Profile() {
     const { user, loading, logout } = useAuth();
     const [add, setAdd] = useState(false);
     const [openSection, setOpenSection] = useState<
         "profile" | "subjects" | "enrolled" | "pending" | null
     >(null);
-
+    const [showDropdown, setShowDropdown] = useState(false);
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(24)).current;
     const logoutScale = useRef(new Animated.Value(1)).current;
@@ -31,13 +37,60 @@ export default function Profile() {
     const [adding, setAdding] = useState(false);
 
     const [subjects, setSubjects] = useState<
-        { name: string; code?: string }[]
+        { id: string, name: string; code?: string }[]
     >([]);
 
     const [enrolledStudents, setEnrolledStudents] = useState<any[]>([]);
     const [pendingStudents, setPendingStudents] = useState<any[]>([]);
-
+    const filteredSubjects = selectFrom.filter((item) =>
+        item.toLowerCase().includes(newSubject.toLowerCase())
+    );
     /* ---------------- FETCH DATA ---------------- */
+
+    const handleRemoveSubject = (subjectId: string) => {
+        console.log(subjectId);
+        Alert.alert(
+            "Remove Student",
+            "Are you sure you want to remove this student from the subject?",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Remove",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            const res = await api.delete(
+                                `/tests/subject/${subjectId}`
+                            );
+                            console.log(res);
+                            fetchSubjects();
+                        } catch (error) {
+                            console.log(error);
+                            Alert.alert("Error", "Failed to remove student");
+                        }
+                    },
+                },
+            ]
+        );
+    };
+
+    const fetchSubjects = async () => {
+        try {
+            const res = await api.get("/tests/list-subjects");
+            setSubjects(
+                Array.isArray(res.data)
+                    ? res.data.map((s: any) => ({
+                        id: s._id,
+                        name: s.name,
+                        code: s.code,
+                    }))
+                    : []
+            );
+        } catch (e) {
+
+        }
+    }
+
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -50,13 +103,14 @@ export default function Profile() {
                 setSubjects(
                     Array.isArray(subjectsRes.data)
                         ? subjectsRes.data.map((s: any) => ({
+                            id: s._id,
                             name: s.name,
                             code: s.code,
                         }))
                         : []
                 );
 
-                console.log(studentsRes.data);
+                console.log("data", studentsRes.data);
                 setEnrolledStudents(studentsRes.data.enrolled || []);
                 setPendingStudents(studentsRes.data || []);
             } catch (err) {
@@ -65,7 +119,7 @@ export default function Profile() {
         };
 
         if (user?.role === "teacher") fetchData();
-    }, [user]);
+    }, [user, newSubject]);
 
     /* ---------------- ENTRY ANIMATION ---------------- */
     useEffect(() => {
@@ -100,8 +154,9 @@ export default function Profile() {
     }
     async function acceptStudent(requestId: string) {
         try {
-            await api.post("/user/accept", { enrollmentId: requestId });
+            console.log(requestId)
 
+            await api.post("/user/accept", { enrollmentId: requestId });
             // remove from pending list (instant UI update)
             setPendingStudents((prev) =>
                 prev.filter((req) => req._id !== requestId)
@@ -116,7 +171,7 @@ export default function Profile() {
 
         try {
             setAdding(true);
-
+            console.log(name);
             const res = await api.post("/tests/addSubject", {
                 subject: name,
             });
@@ -125,6 +180,7 @@ export default function Profile() {
             setSubjects((prev) => [
                 ...prev,
                 {
+                    id: res.data._id,
                     name: res.data.name,
                     code: res.data.code,
                 },
@@ -195,36 +251,74 @@ export default function Profile() {
 
                             {/* Add Subject Input */}
                             {add && (
-                                <View className="bg-indigo-50/60 rounded-2xl px-4 py-4 mb-5 flex-row items-center gap-2">
-                                    <View className="flex-1 bg-white rounded-xl px-4 border border-indigo-100">
-                                        <TextInput
-                                            value={newSubject}
-                                            onChangeText={setNewSubject}
-                                            placeholder="Subject name"
-                                            className="h-10 text-sm"
-                                        />
+                                <View className="bg-indigo-50/60 rounded-2xl px-4 py-4 mb-5">
+
+                                    {/* Row */}
+                                    <View className="flex-row items-center gap-2">
+
+                                        <View className="flex-1 bg-white rounded-xl px-4 border border-indigo-100">
+                                            <TextInput
+                                                value={newSubject}
+                                                onChangeText={(text) => {
+                                                    setNewSubject(text);
+                                                    setShowDropdown(true);
+                                                }}
+                                                onFocus={() => setShowDropdown(true)}
+                                                placeholder="Subject name"
+                                                className="h-10 text-sm"
+                                            />
+                                        </View>
+
+                                        <Pressable
+                                            disabled={adding || !newSubject}
+                                            onPress={() => addSubject(newSubject)}
+                                            className="bg-indigo-600 px-4 py-2 rounded-xl"
+                                        >
+                                            <Text className="text-white font-bold">Add</Text>
+                                        </Pressable>
+
                                     </View>
 
-                                    <Pressable
-                                        disabled={adding}
-                                        onPress={() => addSubject(newSubject)}
-                                        className="bg-indigo-600 px-4 py-2 rounded-xl"
-                                    >
-                                        <Text className="text-white font-bold">Add</Text>
-                                    </Pressable>
+                                    {/* Dropdown */}
+                                    {showDropdown && newSubject.length > 0 && (
+                                        <View className="bg-white border border-indigo-100 rounded-xl mt-2 max-h-40">
+                                            {filteredSubjects.length > 0 ? (
+                                                filteredSubjects.map((item, index) => (
+                                                    <Pressable
+                                                        key={index}
+                                                        onPress={() => {
+                                                            setNewSubject(item);
+                                                            setShowDropdown(false);
+                                                        }}
+                                                        className="px-4 py-2 active:bg-indigo-50"
+                                                    >
+                                                        <Text className="text-sm text-gray-700">{item}</Text>
+                                                    </Pressable>
+                                                ))
+                                            ) : (
+                                                <View className="px-4 py-2">
+                                                    <Text className="text-sm text-gray-400">
+                                                        No subjects found
+                                                    </Text>
+                                                </View>
+                                            )}
+                                        </View>
+                                    )}
+
                                 </View>
                             )}
-
                             {/* Subject List */}
                             {subjects.map((sub, i) => (
+
                                 <RowPill
-                                    key={i}
                                     title={sub.name}
                                     subtitle={sub.code ? `Code: ${sub.code}` : ""}
                                     badge="Active"
                                     badgeColor="bg-emerald-500"
                                     icon={<BookOpen size={14} color="white" />}
+                                    onLongPress={() => handleRemoveSubject(sub.id)}
                                 />
+
                             ))}
 
                             {!add && (
@@ -252,10 +346,12 @@ export default function Profile() {
                                 pendingStudents.map((stu) => (
                                     <RowPill
                                         key={stu._id}
+                                        requestId={stu._id}
                                         title={stu.student?.name || "Student"}
                                         subtitle={stu.subject?.name}
                                         badge="Accept"
                                         badgeColor="bg-emerald-500"
+                                        onclick={acceptStudent}
                                         icon={<BookOpen size={14} color="white" />}
                                     />
                                 ))
@@ -422,37 +518,47 @@ function InfoRow({ label, value, capitalize }: any) {
 }
 
 function RowPill({
+    requestId,
     title,
     subtitle,
     badge,
     badgeColor,
     icon,
     rightAction,
+    onclick,
+    onLongPress
 }: any) {
     return (
-        <View className="mb-3">
-            <View className="flex-row items-center justify-between bg-slate-50 rounded-xl px-4 py-3">
-                <View>
-                    <Text className="text-sm font-bold text-slate-800">
-                        {title}
-                    </Text>
-                    <Text className="text-xs text-slate-500 mt-0.5">
-                        {subtitle}
-                    </Text>
-                </View>
-
-                {rightAction ? (
-                    rightAction
-                ) : (
-                    <View className={`flex-row items-center px-3 py-1 rounded-full ${badgeColor}`}>
-                        {icon && <View className="mr-1">{icon}</View>}
-                        <Text className="text-white text-xs font-bold">
-                            {badge}
+        <Pressable onLongPress={onLongPress}>
+            <View className="mb-3">
+                <View className="flex-row items-center justify-between bg-slate-50 rounded-xl px-4 py-3">
+                    <View>
+                        <Text className="text-sm font-bold text-slate-800">
+                            {title}
+                        </Text>
+                        <Text className="text-xs text-slate-500 mt-0.5">
+                            {subtitle}
                         </Text>
                     </View>
-                )}
+
+                    {rightAction ? (
+                        rightAction
+                    ) : (
+                        <Pressable onPress={async () => {
+                            console.log(requestId)
+                            await onclick(requestId);
+                        }}>
+                            <View className={`flex-row items-center px-3 py-1 rounded-full ${badgeColor}`}>
+                                {icon && <View className="mr-1">{icon}</View>}
+                                <Text className="text-white text-xs font-bold">
+                                    {badge}
+                                </Text>
+                            </View>
+                        </Pressable>
+                    )}
+                </View>
             </View>
-        </View>
+        </Pressable>
     );
 }
 

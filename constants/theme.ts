@@ -51,4 +51,4 @@ export const Fonts = Platform.select({
     mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
   },
 });
-export const backend = "https://mspa-1.onrender.com/api";
+export const backend = "http://10.223.118.192:5000/api";

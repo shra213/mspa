@@ -4,7 +4,7 @@
     "slug": "myNewApp",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/images/OIP.webp",
+    "icon": "./assets/images/OIP.webp",
     "scheme": "mynewapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,

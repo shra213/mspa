@@ -22,6 +22,7 @@ import {
     View,
 } from "react-native";
 
+import api from "@/api";
 import { useTeacherSubjects } from "@/hooks/h1";
 import { useSubjectWiseTests } from "@/hooks/subTests";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -109,6 +110,7 @@ function TeacherTestsList({ subjectId }: { subjectId: string }) {
             </Text>
         );
     }
+
 
     return (
         <ScrollView showsVerticalScrollIndicator={false}>
@@ -234,7 +236,7 @@ function TeacherTestsList({ subjectId }: { subjectId: string }) {
                             )}
 
                             {/* RESULTS + DELETE */}
-                            {test.status === "published" && (
+                            {test.status === "published" || test.status === "ended" && (
                                 <View className="flex-row gap-x-2">
                                     <TouchableOpacity
                                         onPress={() =>
@@ -269,9 +271,9 @@ export default function TeacherTests() {
     const scrollY = useRef(new Animated.Value(0)).current;
     const [selectedSubject, setSelectedSubject] = useState<any>(null);
     const [activeTab, setActiveTab] =
-        useState<"tests" | "results">("tests");
+        useState<"tests" | "students">("tests");
 
-    const { subjects, loading } = useTeacherSubjects(true);
+    const { subjects, loading, fetchSubjects } = useTeacherSubjects(true);
 
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(20)).current;
@@ -293,6 +295,57 @@ export default function TeacherTests() {
             }),
         ]).start();
     }, [subjects, selectedSubject, activeTab]);
+
+    useEffect(() => {
+        console.log("refre")
+        fetchSubjects();
+    }, [activeTab]);
+    const [students, setStudents] = useState([]);
+
+    const fetchStudents = async (subjectId: any) => {
+        try {
+            const res = await api.get(`/tests/subject/${subjectId}/students`);
+            console.log(res.data);
+            setStudents(res.data.students);
+        } catch (e) {
+            console.log(e)
+            return;
+        }
+    }
+    const handleRemoveStudent = (studentId: string) => {
+        Alert.alert(
+            "Remove Student",
+            "Are you sure you want to remove this student from the subject?",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Remove",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            await api.delete(
+                                `/tests/subject/${selectedSubject._id}/students/${studentId}`
+                            );
+
+                            // remove from local state instantly
+                            setStudents((prev: any) =>
+                                prev.filter((s: any) => s._id !== studentId)
+                            );
+                        } catch (error) {
+                            console.log(error);
+                            Alert.alert("Error", "Failed to remove student");
+                        }
+                    },
+                },
+            ]
+        );
+    };
+
+    useEffect(() => {
+        if (activeTab === "students" && selectedSubject?._id) {
+            fetchStudents(selectedSubject._id);
+        }
+    }, [activeTab, selectedSubject]);
 
     if (loading) {
         return (
@@ -394,7 +447,7 @@ export default function TeacherTests() {
 
                 {/* TABS */}
                 <View className="flex-row px-10 mt-8">
-                    {["tests"].map((tab) => (
+                    {["tests", "students"].map((tab) => (
                         <Pressable
                             key={tab}
                             onPress={() => setActiveTab(tab as any)}
@@ -415,15 +468,74 @@ export default function TeacherTests() {
                     ))}
                 </View>
 
-                <Animated.View
-                    style={{
-                        opacity: fadeAnim,
-                        transform: [{ translateY: slideAnim }],
-                    }}
-                    className="flex-1 px-8 mt-6"
-                >
-                    <TeacherTestsList subjectId={selectedSubject._id} />
-                </Animated.View>
+                {activeTab === "tests" ? (
+                    <Animated.View
+                        style={{
+                            opacity: fadeAnim,
+                            transform: [{ translateY: slideAnim }],
+                        }}
+                        className="flex-1 px-8 mt-6"
+                    >
+                        <TeacherTestsList subjectId={selectedSubject._id} />
+                    </Animated.View>
+                ) : (
+                    <Animated.View
+                        style={{
+                            opacity: fadeAnim,
+                            transform: [{ translateY: slideAnim }],
+                        }}
+                        className="flex-1 px-6 mt-6"
+                    >
+                        {students && students.length > 0 ? (
+                            <ScrollView showsVerticalScrollIndicator={false}>
+                                {students.map((student: any) => (
+                                    <TouchableOpacity
+                                        key={student._id}
+                                        activeOpacity={0.9}
+                                        onLongPress={() => handleRemoveStudent(student._id)}
+                                        delayLongPress={400}
+                                        className="bg-white p-5 rounded-[28px] mb-4 border border-slate-100 shadow-sm"
+                                    >
+                                        <View
+                                            key={student._id}
+                                            className="bg-white p-5 rounded-[28px] mb-4 border border-slate-100 shadow-sm"
+                                        >
+                                            <View className="flex-row items-center justify-between">
+                                                <View className="flex-1">
+                                                    <Text className="text-lg font-extrabold text-slate-900">
+                                                        {student.name}
+                                                    </Text>
+
+                                                    <Text className="text-xs text-slate-400 mt-1">
+                                                        {student.email}
+                                                    </Text>
+                                                </View>
+
+                                                <View className="bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
+                                                    <Text className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">
+                                                        Enrolled
+                                                    </Text>
+                                                </View>
+                                            </View>
+                                        </View>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        ) : (
+                            <View className="flex-1 items-center justify-center">
+                                <View className="bg-white px-10 py-8 rounded-[30px] border border-slate-100">
+                                    <Text className="text-3xl font-black text-slate-900 text-center">
+                                        0
+                                    </Text>
+                                    <Text className="text-slate-400 font-bold mt-2 text-center uppercase tracking-wider text-xs">
+                                        No Students Enrolled
+                                    </Text>
+                                </View>
+                            </View>
+                        )}
+                    </Animated.View>
+                )}
+
             </View>
         </SafeAreaView >
     );

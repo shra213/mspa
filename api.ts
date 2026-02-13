@@ -3,7 +3,7 @@ import axios from "axios";
 import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 // import { backend } from "./constants/theme";
-const backend = "https://mspa-1.onrender.com/api";
+const backend = "http://10.223.118.192:5000/api";
 /**
  * MAIN API
  */

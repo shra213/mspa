@@ -1,3 +1,4 @@
+import api from "@/api";
 import { backend } from "@/constants/theme";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -33,10 +34,19 @@ const LiveTest = () => {
         const data = await res.json();
         setTestDetails(data);
     };
-
+    const end = async (testId: string) => {
+        try {
+            console.log(testId)
+            const res = await api.put(`/tests/${testId}/end`);
+            console.log(res);
+        } catch (e) {
+            console.log(e);
+            Alert.alert("error");
+        }
+    }
     const setupSocket = (token: string | null) => {
         if (!token) return;
-        const socket = io('https://mspa-1.onrender.com', {
+        const socket = io('http://10.223.118.192:5000', {
             auth: { token },
             transports: ['websocket'],
         });
@@ -47,6 +57,11 @@ const LiveTest = () => {
         });
 
         socket.on("student-joined", (student) => {
+            console.log(student)
+            if (!student) {
+                console.log("student not defined")
+                return;
+            }
             setStudents(prev => {
                 const exists = prev.find(s => s._id === student._id);
                 if (exists) return prev;
@@ -75,6 +90,8 @@ const LiveTest = () => {
                 style: "destructive",
                 onPress: () => {
                     socketRef.current.emit("end-test", { testId });
+                    //@ts-ignore
+                    end(testId);
                     router.back();
                 }
             }
@@ -167,12 +184,17 @@ const LiveTest = () => {
                         <View className="bg-white p-4 mb-3 rounded-2xl flex-row justify-between items-center shadow-sm border border-slate-100">
                             <View className="flex-row items-center">
                                 <View className="w-10 h-10 bg-slate-100 rounded-full items-center justify-center mr-3">
-                                    <Text className="text-slate-600 font-bold">{item.name.charAt(0)}</Text>
+                                    <Text className="text-slate-600 font-bold">{item.name[0]}</Text>
                                 </View>
                                 <View>
-                                    <Text className="text-slate-900 font-bold">{item.name}</Text>
+                                    <Text className="text-slate-600 font-bold">
+                                        {item?.name ? item.name[0] : "?"}
+                                    </Text>
                                     <Text className="text-slate-400 text-[10px] uppercase">Student ID: {item._id.slice(-6)}</Text>
                                 </View>
+                                <Text className="text-slate-900 font-bold">
+                                    {item?.name || "Unknown Student"}
+                                </Text>
                             </View>
 
                             <View className={`px-3 py-1 rounded-full ${item.submitted ? 'bg-emerald-100' : 'bg-amber-100'}`}>

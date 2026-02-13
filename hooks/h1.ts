@@ -67,6 +67,7 @@ export function useTeacherSubjects(autoFetch = true) {
 
     return {
         subjects,
+        setSubjects,
         loading,
         adding,
         fetchSubjects,

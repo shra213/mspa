@@ -47,15 +47,19 @@ export default function Profile() {
             Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
             Animated.spring(slideAnim, { toValue: 0, friction: 7, useNativeDriver: true }),
         ]).start();
-    }, [user]);
+    }, [user, requesting]);
 
     async function requestEnroll() {
         if (!teacherCode.trim()) return;
         try {
+
+            console.log(teacherCode)
             setRequesting(true);
             const res = await api.post("/user/request", { code: teacherCode });
             if (res?.data?.request) setPending((prev) => [...prev, res.data.request]);
             setTeacherCode("");
+
+            console.log(res.data)
             setEnrollOpen(false);
         } catch (err) {
             console.log(err);

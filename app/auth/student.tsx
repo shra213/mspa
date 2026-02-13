@@ -77,7 +77,7 @@ export default function AuthScreen() {
             const data = await login(email, password);
             console.log(data.user.role);
             if (role !== data.user.role) {
-                router.replace("/");
+                Alert.alert("you are not")
                 return;
             }
             console.log("success after login")

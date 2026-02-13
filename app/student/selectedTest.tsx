@@ -1,3 +1,4 @@
+import { useAuth } from "@/context/AuthContext";
 import { useTest } from "@/context/TestContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useLocalSearchParams } from "expo-router";
@@ -23,7 +24,8 @@ export default function TakeTest() {
     const [timeLeft, setTimeLeft] = useState(0);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [showIndex, setShowIndex] = useState(false);
-
+    const { user } = useAuth();
+    console.log(user);
     const {
         answers,
         submitAnswer,
@@ -79,7 +81,7 @@ export default function TakeTest() {
     const setupSocket = async () => {
         const token = await AsyncStorage.getItem("token");
 
-        const socket = io("https://mspa-1.onrender.com", {
+        const socket = io("http://10.223.118.192:5000", {
             auth: { token },
             transports: ["websocket"],
         });
